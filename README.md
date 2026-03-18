@@ -21,6 +21,10 @@ Example with `lazy.nvim` local plugin development:
   config = function()
     require("agentation").setup({
       root = "/path/to/agentation/package",
+
+      -- Optional router integration for local checkouts
+      router_url = "http://127.0.0.1:8787",
+      router_bin = "/path/to/agentation/bin/agentation",
     })
   end,
 }
@@ -53,7 +57,7 @@ require("agentation").setup({
   router_register_interval_ms = 5000,
   router_auto_start = true,
   router_bin = "agentation", -- defaults to PATH lookup
-  router_start_args = { "start", "--router" },
+  router_start_args = { "start" },
 
   -- Optional identity overrides
   project_id = nil,
@@ -72,6 +76,10 @@ Project IDs default to `sha256(realpath(git_root_or_root))`.
 Repo IDs default to `sha256(git remote.origin.url)` when available.
 
 When `router_auto_start=true`, the plugin attempts to start the router with `<router_bin> <router_start_args...>` whenever `router_url` is configured but unreachable.
+
+`router_bin` defaults to `"agentation"` (resolved via `PATH`). Set an absolute path in `setup()` if you want to force a local binary.
+
+Startup auto-connect failures are silent. Manual `:AgentationStart` emits at most one router warning per command invocation.
 
 ## Statusline indicator
 

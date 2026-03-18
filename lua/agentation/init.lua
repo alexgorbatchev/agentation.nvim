@@ -12,7 +12,7 @@ local state = {
   watchdog = nil,
   routerHeartbeat = nil,
   routerStartInFlight = false,
-  lastRouterStartAttemptAt = nil,
+  routerStartAttempted = false,
   sessionId = nil,
   projectId = nil,
   repoId = nil,
@@ -30,7 +30,7 @@ local config = {
   router_register_interval_ms = 5000,
   router_auto_start = true,
   router_bin = "agentation",
-  router_start_args = { "start", "--router" },
+  router_start_args = { "start" },
   project_id = nil,
   repo_id = nil,
   session_id = nil,
@@ -373,32 +373,29 @@ local function setRouterConnected(isConnected)
   end
 end
 
-local function startRouterProcess()
+local function startRouterProcess(options)
+  options = options or {}
+
   if not config.router_auto_start then
-    return
+    return false, "router_auto_start is disabled"
   end
 
   local routerBin = config.router_bin
   if not routerBin or routerBin == "" then
-    return
+    return false, "router_bin is empty"
   end
 
   if state.routerStartInFlight then
-    return
+    return false, "router start is already in progress"
   end
 
-  local now = uv.now()
-  if state.lastRouterStartAttemptAt and now - state.lastRouterStartAttemptAt < 2000 then
-    return
+  if state.routerStartAttempted and not options.force then
+    return false, "router start already attempted"
   end
-  state.lastRouterStartAttemptAt = now
+  state.routerStartAttempted = true
 
   if vim.fn.executable(routerBin) ~= 1 then
-    notify(
-      "Agentation router auto-start failed: command not found ('" .. routerBin .. "'). Set router_bin or add it to PATH.",
-      vim.log.levels.WARN
-    )
-    return
+    return false, "command not found ('" .. routerBin .. "'). Set router_bin or add it to PATH."
   end
 
   local command = { routerBin }
@@ -409,56 +406,40 @@ local function startRouterProcess()
     end
   else
     table.insert(command, "start")
-    table.insert(command, "--router")
   end
 
   state.routerStartInFlight = true
 
-  local function finish(success, message)
+  local function finish(success)
     state.routerStartInFlight = false
     if success then
       return
     end
 
-    local details = message and vim.trim(message) or ""
-    if details ~= "" then
-      notify("Agentation router auto-start failed: " .. details, vim.log.levels.WARN)
-    else
-      notify("Agentation router auto-start failed", vim.log.levels.WARN)
-    end
+    setRouterConnected(false)
   end
 
   if vim.system then
     local didStart, systemError = pcall(function()
       vim.system(command, { text = true }, function(result)
-        if result.code == 0 then
-          finish(true)
-          return
-        end
-
-        local errorOutput = result.stderr
-        if not errorOutput or errorOutput == "" then
-          errorOutput = result.stdout or ""
-        end
-        finish(false, errorOutput)
+        finish(result.code == 0)
       end)
     end)
 
     if not didStart then
-      finish(false, tostring(systemError))
+      state.routerStartInFlight = false
+      return false, tostring(systemError)
     end
-    return
+
+    return true
   end
 
   vim.schedule(function()
-    local output = vim.fn.system(command)
-    if vim.v.shell_error == 0 then
-      finish(true)
-      return
-    end
-
-    finish(false, output)
+    local _ = vim.fn.system(command)
+    finish(vim.v.shell_error == 0)
   end)
+
+  return true
 end
 
 local function probeRouterHealth(onResult)
@@ -646,7 +627,10 @@ local function routerRegisterPayload()
   }
 end
 
-local function registerWithRouter()
+local function registerWithRouter(options)
+  options = options or {}
+  local notifyOnError = options.notify_on_error == true
+
   if not config.router_url or config.router_url == "" then
     return
   end
@@ -655,17 +639,27 @@ local function registerWithRouter()
     vim.schedule(function()
       if not isHealthy then
         setRouterConnected(false)
-        startRouterProcess()
-        vim.defer_fn(function()
-          if state.server then
-            registerWithRouter()
+
+        local _, startError = startRouterProcess({
+          force = options.force_router_start == true,
+        })
+
+        if notifyOnError then
+          local message = "Agentation router is unavailable at " .. config.router_url
+          if startError and startError ~= "" and startError ~= "router start already attempted" and startError ~= "router start is already in progress" then
+            message = message .. ": " .. startError
           end
-        end, 400)
+          notify(message, vim.log.levels.WARN)
+        end
         return
       end
 
       sendRouterJson("/register", routerRegisterPayload(), function(success)
         setRouterConnected(success)
+
+        if notifyOnError and not success then
+          notify("Agentation failed to register with router at " .. config.router_url, vim.log.levels.WARN)
+        end
       end)
     end)
   end)
@@ -760,11 +754,16 @@ local function handleRequest(client, request)
   respond(client, "204 No Content", "")
 end
 
-local function startServer()
+local function startServer(options)
+  options = options or {}
+
   if state.server then
     ensureWatchdog()
     ensureRouterHeartbeat()
-    registerWithRouter()
+    registerWithRouter({
+      notify_on_error = options.notify_router_errors == true,
+      force_router_start = options.force_router_start == true,
+    })
     refreshStatusline()
     return true
   end
@@ -834,14 +833,17 @@ local function startServer()
   state.server = server
   ensureWatchdog()
   ensureRouterHeartbeat()
-  registerWithRouter()
+  registerWithRouter({
+    notify_on_error = options.notify_router_errors == true,
+    force_router_start = options.force_router_start == true,
+  })
   refreshStatusline()
 
   return true
 end
 
-function M.start()
-  startServer()
+function M.start(options)
+  startServer(options)
 end
 
 function M.stop()
@@ -864,6 +866,8 @@ function M.stop()
   state.watchdog = nil
   state.lastHeartbeatAt = nil
   state.isPageConnected = false
+  state.routerStartInFlight = false
+  state.routerStartAttempted = false
   refreshStatusline()
 end
 
@@ -926,7 +930,10 @@ function M.setup(options)
   ensureStatuslineAttachment()
 
   vim.api.nvim_create_user_command("AgentationStart", function()
-    M.start()
+    M.start({
+      notify_router_errors = true,
+      force_router_start = true,
+    })
   end, {})
   vim.api.nvim_create_user_command("AgentationStop", function()
     M.stop()
@@ -944,7 +951,10 @@ function M.setup(options)
   })
 
   if config.auto_start then
-    M.start()
+    M.start({
+      notify_router_errors = false,
+      force_router_start = false,
+    })
   end
 end
 
