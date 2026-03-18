@@ -7,7 +7,7 @@ Minimal Neovim bridge for Agentation component-source links.
 - starts a small local HTTP server
 - accepts requests like `/open?path=src/Button.tsx&line=42&column=8`
 - opens the file in the current Neovim instance and jumps to the location
-- optionally registers this Neovim session with `agentation-router`
+- optionally registers this Neovim session with the Agentation router managed by the `agentation` CLI
 
 ## Install
 
@@ -52,7 +52,8 @@ require("agentation").setup({
   router_token = nil,
   router_register_interval_ms = 5000,
   router_auto_start = true,
-  router_bin = "agentation-router", -- defaults to PATH lookup
+  router_bin = "agentation", -- defaults to PATH lookup
+  router_start_args = { "start", "--router" },
 
   -- Optional identity overrides
   project_id = nil,
@@ -70,7 +71,7 @@ require("agentation").setup({
 Project IDs default to `sha256(realpath(git_root_or_root))`.
 Repo IDs default to `sha256(git remote.origin.url)` when available.
 
-When `router_auto_start=true`, the plugin attempts to start the router with `<router_bin> start` whenever `router_url` is configured but unreachable.
+When `router_auto_start=true`, the plugin attempts to start the router with `<router_bin> <router_start_args...>` whenever `router_url` is configured but unreachable.
 
 ## Statusline indicator
 

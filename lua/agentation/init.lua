@@ -29,7 +29,8 @@ local config = {
   router_token = nil,
   router_register_interval_ms = 5000,
   router_auto_start = true,
-  router_bin = "agentation-router",
+  router_bin = "agentation",
+  router_start_args = { "start", "--router" },
   project_id = nil,
   repo_id = nil,
   session_id = nil,
@@ -400,6 +401,17 @@ local function startRouterProcess()
     return
   end
 
+  local command = { routerBin }
+  local startArgs = config.router_start_args
+  if type(startArgs) == "table" and #startArgs > 0 then
+    for _, value in ipairs(startArgs) do
+      table.insert(command, tostring(value))
+    end
+  else
+    table.insert(command, "start")
+    table.insert(command, "--router")
+  end
+
   state.routerStartInFlight = true
 
   local function finish(success, message)
@@ -418,7 +430,7 @@ local function startRouterProcess()
 
   if vim.system then
     local didStart, systemError = pcall(function()
-      vim.system({ routerBin, "start" }, { text = true }, function(result)
+      vim.system(command, { text = true }, function(result)
         if result.code == 0 then
           finish(true)
           return
@@ -439,7 +451,7 @@ local function startRouterProcess()
   end
 
   vim.schedule(function()
-    local output = vim.fn.system({ routerBin, "start" })
+    local output = vim.fn.system(command)
     if vim.v.shell_error == 0 then
       finish(true)
       return
