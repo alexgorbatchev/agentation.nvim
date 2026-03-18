@@ -77,6 +77,9 @@ Repo IDs default to `sha256(git remote.origin.url)` when available.
 
 When `router_auto_start=true`, the plugin attempts to start the router with `<router_bin> <router_start_args...>` whenever `router_url` is configured but unreachable.
 
+With the current CLI lifecycle model, `router_start_args = { "start" }` starts the single Agentation stack process (server + router).
+If you want router-only startup from Neovim auto-start, launch Neovim with `AGENTATION_SERVER_ADDR=0` in the environment.
+
 `router_bin` defaults to `"agentation"` (resolved via `PATH`). Set an absolute path in `setup()` if you want to force a local binary.
 
 Startup auto-connect failures are silent. Manual `:AgentationStart` emits at most one router warning per command invocation.
