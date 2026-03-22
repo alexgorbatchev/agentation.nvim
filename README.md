@@ -2,6 +2,14 @@
 
 Minimal Neovim bridge for Agentation component-source links.
 
+## Related components
+
+- [`@alexgorbatchev/agentation`](https://github.com/alexgorbatchev/agentation) — frontend annotation toolbar
+- [`@alexgorbatchev/agentation-cli`](https://github.com/alexgorbatchev/agentation-cli) — local server/router CLI required for router mode
+- [`@alexgorbatchev/agentation-skills`](https://github.com/alexgorbatchev/agentation-skills) — shared coding-agent skills for Agentation workflows
+- [`@alexgorbatchev/pi-agentation`](https://github.com/alexgorbatchev/pi-agentation) — Pi integration for automated Agentation fix loops
+- [agentation.dev](https://agentation.dev) — public docs and examples
+
 ## What it does
 
 - starts a small local HTTP server
@@ -11,20 +19,20 @@ Minimal Neovim bridge for Agentation component-source links.
 
 ## Install
 
-Copy the `nvim/` folder contents into a plugin repo or directly into your config.
+Install as a regular Neovim plugin.
 
-Example with `lazy.nvim` local plugin development:
+Example with `lazy.nvim`:
 
 ```lua
 {
-  dir = "/path/to/agentation/nvim",
+  "alexgorbatchev/agentation.nvim",
   config = function()
     require("agentation").setup({
-      root = "/path/to/agentation/package",
+      root = vim.fn.getcwd(),
 
-      -- Optional router integration for local checkouts
+      -- Optional router integration
       router_url = "http://127.0.0.1:8787",
-      router_bin = "/path/to/agentation/bin/agentation",
+      router_bin = "agentation",
     })
   end,
 }
