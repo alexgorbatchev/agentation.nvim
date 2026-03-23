@@ -4,11 +4,11 @@ Minimal Neovim bridge for Agentation component-source links.
 
 ## Related components
 
+- [agentation-fork.vercel.app](https://agentation-fork.vercel.app)
 - [`@alexgorbatchev/agentation`](https://github.com/alexgorbatchev/agentation) — frontend annotation toolbar
 - [`@alexgorbatchev/agentation-cli`](https://github.com/alexgorbatchev/agentation-cli) — local server/router CLI required for router mode
 - [`@alexgorbatchev/agentation-skills`](https://github.com/alexgorbatchev/agentation-skills) — shared coding-agent skills for Agentation workflows
 - [`@alexgorbatchev/pi-agentation`](https://github.com/alexgorbatchev/pi-agentation) — Pi integration for automated Agentation fix loops
-- [agentation.dev](https://agentation.dev) — public docs and examples
 
 ## What it does
 
