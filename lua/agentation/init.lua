@@ -28,7 +28,7 @@ local config = {
   router_url = nil,
   router_token = nil,
   router_register_interval_ms = 5000,
-  router_auto_start = true,
+  router_auto_start = false,
   router_bin = "agentation",
   router_start_args = { "start" },
   project_id = nil,
@@ -376,7 +376,7 @@ end
 local function startRouterProcess(options)
   options = options or {}
 
-  if not config.router_auto_start then
+  if not config.router_auto_start and not options.force then
     return false, "router_auto_start is disabled"
   end
 
